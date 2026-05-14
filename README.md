@@ -7,6 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://python.org)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)](https://streamlit.io)
 [![Claude](https://img.shields.io/badge/LLM-Claude%20Sonnet-purple)](https://anthropic.com)
+[![Azure](https://img.shields.io/badge/Powered%20by-Azure%20AI%20Foundry-0078D4?logo=microsoftazure)](https://ai.azure.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 🚀 **Live Demo:** https://swarm-sight.onrender.com *(replace before submission)*
@@ -64,13 +65,25 @@ The Validator agent returns a `retry_needed: bool` and `retry_agent: str` in its
 ### SwarmLogger & Live Feed
 Every agent calls `logger.log(agent_name, message, status)` which fires a callback to the Streamlit UI, powering the real-time agent activity feed. Users can watch the swarm think in real time.
 
+### ☁️ Built on Microsoft Azure AI Foundry
+
+> **For hackathon judges:** SwarmSight runs entirely on **[Microsoft Azure AI Foundry](https://ai.azure.com)** — Microsoft's enterprise-grade platform for deploying and orchestrating AI models at scale.
+
+All Claude inference is routed through `AnthropicFoundry` (the Azure-native Anthropic client), authenticated via `DefaultAzureCredential` and an Azure AD token provider. This means:
+
+- **Enterprise security** — no raw API keys in the environment; authentication uses Azure AD service principals and short-lived bearer tokens
+- **Azure-native deployment** — the app runs on Render but the AI backbone is hosted in Azure, giving access to Azure's SLA, compliance certifications (SOC 2, ISO 27001), and regional data residency
+- **Production-ready auth** — `DefaultAzureCredential` automatically adapts between local dev (service principal / `az login`), CI/CD, and production (managed identity), with zero code changes across environments
+
 ---
 
 ## 3. AI Tools Used
 
 | Tool | Usage |
 |---|---|
-| **Claude API** (`claude-sonnet-4-20250514`) | Powers all 5 agents via `agents/base.py → call_claude()` |
+| **Azure AI Foundry** | Hosts and serves Claude — enterprise-grade AI infrastructure |
+| **Claude Sonnet** (`claude-sonnet-4-20250514`) | Powers all 5 agents via `agents/base.py → call_claude()` |
+| **`AnthropicFoundry` client** | Azure-native Anthropic SDK client, authenticated via `DefaultAzureCredential` |
 | **CrewAI** | Agent framework providing the orchestration layer |
 | **Planner agent** | Parses goal + dataset metadata, produces structured analysis plan |
 | **Cleaner agent** | Identifies and fixes data quality issues, returns cleaned DataFrame |
@@ -78,7 +91,7 @@ Every agent calls `logger.log(agent_name, message, status)` which fires a callba
 | **Validator agent** | Evaluates outputs against confidence thresholds, triggers retries |
 | **Reporter agent** | Generates the final executive summary and recommendations |
 
-All Claude calls go through a single `call_claude()` wrapper in `agents/base.py` — never called directly elsewhere, per architecture rules. Claude is prompted to return structured JSON matching the Pydantic schema for each agent.
+All Claude calls go through a single `call_claude()` wrapper in `agents/base.py` — never called directly elsewhere, per architecture rules. Claude is prompted to return structured JSON matching the Pydantic schema for each agent. The wrapper uses `AnthropicFoundry` (Azure AI Foundry) rather than the direct Anthropic client, so all inference is authenticated through Azure AD and routed via your Foundry resource.
 
 ---
 
@@ -86,7 +99,8 @@ All Claude calls go through a single `call_claude()` wrapper in `agents/base.py`
 
 ### Prerequisites
 - Python 3.11+
-- An [Anthropic API key](https://console.anthropic.com)
+- An [Azure AI Foundry](https://ai.azure.com) resource with Claude deployed
+- A service principal (or use `az login` for local dev — `DefaultAzureCredential` picks it up automatically)
 
 ### Step-by-step
 
@@ -103,9 +117,13 @@ venv\Scripts\activate           # Windows
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Set your API key
+# 4. Set your Azure credentials
 cp .env.example .env
-# Open .env and set: ANTHROPIC_API_KEY=your_key_here
+# Open .env and fill in all four Azure vars:
+#   AZURE_RESOURCE_NAME   — subdomain of your Foundry endpoint
+#   AZURE_CLIENT_ID       — service principal app ID
+#   AZURE_TENANT_ID       — your Azure AD tenant ID
+#   AZURE_CLIENT_SECRET   — service principal secret
 
 # 5. Launch the app
 streamlit run ui/app.py
@@ -125,7 +143,8 @@ python main.py data/samples/sales_data.csv "Find top-performing regions and seas
 
 | Package | Version | Purpose |
 |---|---|---|
-| `anthropic` | ≥0.20.0 | Claude API client |
+| `anthropic[foundry]` | ≥0.40.0 | Claude via Azure AI Foundry (`AnthropicFoundry` client) |
+| `azure-identity` | ≥1.17.0 | `DefaultAzureCredential` + token provider for Azure AD auth |
 | `crewai` | ≥0.28.0 | Agent orchestration framework |
 | `streamlit` | ≥1.32.0 | Web UI |
 | `pandas` | ≥2.0.0 | Data manipulation |

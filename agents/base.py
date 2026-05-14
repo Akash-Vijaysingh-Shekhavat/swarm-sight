@@ -1,9 +1,23 @@
 import os
 import json
-import anthropic
+from anthropic import AnthropicFoundry
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from utils.logger import logger
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+# Azure AI Foundry — reads AZURE_RESOURCE_NAME from environment.
+# Authentication is handled by DefaultAzureCredential, which automatically
+# tries (in order): env vars (AZURE_CLIENT_ID / TENANT_ID / CLIENT_SECRET),
+# managed identity, Azure CLI, and VS Code credentials.
+_credential = DefaultAzureCredential()
+_token_provider = get_bearer_token_provider(
+    _credential, "https://cognitiveservices.azure.com/.default"
+)
+
+client = AnthropicFoundry(
+    azure_resource_name=os.environ["AZURE_RESOURCE_NAME"],
+    azure_ad_token_provider=_token_provider,
+)
+
 MODEL = "claude-sonnet-4-20250514"
 
 def call_claude(agent_name: str, system_prompt: str, user_message: str, max_tokens: int = 2000) -> dict:

@@ -6,7 +6,14 @@ services:
     startCommand: streamlit run ui/app.py --server.port $PORT --server.address 0.0.0.0
     plan: free
     envVars:
-      - key: ANTHROPIC_API_KEY
-        sync: false   # mark as secret — must be set manually in Render dashboard
+      # Azure AI Foundry — set all four in the Render dashboard (never commit values)
+      - key: AZURE_RESOURCE_NAME
+        sync: false
+      - key: AZURE_CLIENT_ID
+        sync: false
+      - key: AZURE_TENANT_ID
+        sync: false
+      - key: AZURE_CLIENT_SECRET
+        sync: false
       - key: PYTHON_VERSION
         value: 3.11.0

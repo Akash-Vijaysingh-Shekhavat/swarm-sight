@@ -1,5 +1,6 @@
 # TODO: pin exact versions once dev environment is stable
-anthropic>=0.20.0
+anthropic[foundry]>=0.40.0
+azure-identity>=1.17.0
 crewai>=0.28.0
 streamlit>=1.32.0
 pandas>=2.0.0

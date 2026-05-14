@@ -1,0 +1,9 @@
+# TODO: pin exact versions once dev environment is stable
+anthropic>=0.20.0
+crewai>=0.28.0
+streamlit>=1.32.0
+pandas>=2.0.0
+scikit-learn>=1.4.0
+plotly>=5.20.0
+pydantic>=2.0.0
+python-dotenv>=1.0.0

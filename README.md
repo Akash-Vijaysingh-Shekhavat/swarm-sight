@@ -2,74 +2,175 @@
 
 **A multi-agent AI engine that turns raw CSVs into executive-grade insight reports — in seconds.**
 
-> Built for hackers. Powered by Claude. Orchestrated by a swarm.
+> Built for the Agent Swarms hackathon. Powered by Claude. Orchestrated by a swarm of 5 specialized AI agents.
+
+[![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://python.org)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)](https://streamlit.io)
+[![Claude](https://img.shields.io/badge/LLM-Claude%20Sonnet-purple)](https://anthropic.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
+🚀 **Live Demo:** https://swarm-sight.onrender.com *(replace before submission)*
 
 ---
 
-## ✨ What It Does
+## 1. Project Description
 
-Drop in any CSV, describe your goal in plain English, and SwarmSight unleashes **5 specialized AI agents** that collaborate, self-correct, and produce a polished analytical report — complete with trends, anomalies, and recommendations.
+Data analysts spend **70% of their time on data prep** — cleaning CSVs, hunting for nulls, manually writing summaries. SwarmSight eliminates that entirely.
 
-No dashboards to configure. No SQL to write. Just answers.
+Drop in any CSV, describe your goal in plain English, and SwarmSight unleashes a **collaborative swarm of 5 AI agents** that automatically clean your data, surface patterns, validate findings, and produce a polished executive report — with **zero configuration**.
+
+**The problem it solves:** Non-technical users can't easily extract insights from raw data. Technical users waste time on repetitive prep work. SwarmSight automates the entire pipeline, from messy CSV to boardroom-ready insights, in seconds.
+
+**The Agent Swarms theme:** SwarmSight is a direct implementation of agent swarm architecture — each agent is a specialist, they pass structured outputs to each other, and the Validator agent can trigger autonomous retries when quality doesn't meet the bar. It's not just an AI feature; the swarm *is* the product.
 
 ---
 
-## 🤖 The Swarm
+## 2. Architecture Overview
 
-| Agent | Role |
+### The 5-Agent Pipeline
+
+```
+User: CSV + Goal
+       │
+       ▼
+  ┌─────────┐    JSON     ┌─────────┐    JSON     ┌──────────┐
+  │ Planner │ ──────────► │ Cleaner │ ──────────► │ Analyst  │
+  └─────────┘             └─────────┘             └──────────┘
+  Reads goal +            Fixes nulls,                  │ JSON
+  dataset info,           types, dupes           ┌──────┘
+  creates plan            Returns cleaned df      ▼
+                                           ┌────────────┐
+                                           │  Validator │
+                                           └────────────┘
+                                           Quality gate — checks
+                                           confidence + consistency
+                                                 │
+                          ┌──────────────────────┴──────────────────────┐
+                          │ retry_needed = True                          │ retry_needed = False
+                          ▼                                              ▼
+              Re-run Analyst or Cleaner                         ┌──────────┐
+              (up to MAX_RETRIES = 2)                           │ Reporter │
+                                                                └──────────┘
+                                                                Synthesizes all outputs
+                                                                into executive report
+```
+
+### Agent Communication
+All agents communicate via **typed Pydantic schemas** defined in `utils/schemas.py`. No agent ever receives raw text from another agent — only validated JSON objects. This makes the swarm deterministic and debuggable.
+
+### The Retry / Self-Healing Mechanism
+The Validator agent returns a `retry_needed: bool` and `retry_agent: str` in its output. The orchestrator in `main.py` checks this after each validation pass and re-runs only the failing agent (Analyst or Cleaner), not the entire pipeline. This targeted retry approach saves latency and API cost while guaranteeing output quality.
+
+### SwarmLogger & Live Feed
+Every agent calls `logger.log(agent_name, message, status)` which fires a callback to the Streamlit UI, powering the real-time agent activity feed. Users can watch the swarm think in real time.
+
+---
+
+## 3. AI Tools Used
+
+| Tool | Usage |
 |---|---|
-| 🗺️ **Planner** | Reads your goal + dataset, builds the analysis strategy |
-| 🧹 **Cleaner** | Detects and fixes nulls, types, outliers — silently |
-| 🔍 **Analyst** | Finds patterns, correlations, and anomalies |
-| ✅ **Validator** | Cross-checks outputs, triggers retries if quality fails |
-| 📝 **Reporter** | Synthesizes everything into a crisp executive report |
+| **Claude API** (`claude-sonnet-4-20250514`) | Powers all 5 agents via `agents/base.py → call_claude()` |
+| **CrewAI** | Agent framework providing the orchestration layer |
+| **Planner agent** | Parses goal + dataset metadata, produces structured analysis plan |
+| **Cleaner agent** | Identifies and fixes data quality issues, returns cleaned DataFrame |
+| **Analyst agent** | Finds correlations, trends, and anomalies in cleaned data |
+| **Validator agent** | Evaluates outputs against confidence thresholds, triggers retries |
+| **Reporter agent** | Generates the final executive summary and recommendations |
 
-Agents talk to each other. If the Validator isn't satisfied, it sends the Analyst or Cleaner back to try again — up to **2 automatic retries**.
-
----
-
-## 🛠 Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Language | Python 3.11+ |
-| Agent Framework | CrewAI |
-| LLM | Claude (claude-sonnet-4-20250514) |
-| UI | Streamlit |
-| Data | Pandas, scikit-learn, Plotly |
-| Deployment | Render.com |
+All Claude calls go through a single `call_claude()` wrapper in `agents/base.py` — never called directly elsewhere, per architecture rules. Claude is prompted to return structured JSON matching the Pydantic schema for each agent.
 
 ---
 
-## 🚀 Quick Start
+## 4. Setup Instructions
 
-### 1. Clone & install
+### Prerequisites
+- Python 3.11+
+- An [Anthropic API key](https://console.anthropic.com)
+
+### Step-by-step
 
 ```bash
+# 1. Clone the repo
 git clone https://github.com/Akash-Vijaysingh-Shekhavat/swarm-sight.git
 cd swarm-sight
-python -m venv venv && source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 2. Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate        # macOS/Linux
+venv\Scripts\activate           # Windows
+
+# 3. Install dependencies
 pip install -r requirements.txt
-```
 
-### 2. Set up your API key
-
-```bash
+# 4. Set your API key
 cp .env.example .env
-# Open .env and add your Anthropic API key
-```
+# Open .env and set: ANTHROPIC_API_KEY=your_key_here
 
-### 3. Run the Streamlit UI
-
-```bash
+# 5. Launch the app
 streamlit run ui/app.py
 ```
 
-### 4. Or run from the CLI
+The app will open at `http://localhost:8501`. Upload any CSV, type a goal, and click **Launch Swarm**.
+
+### CLI usage (no UI)
 
 ```bash
-python main.py data/samples/sample.csv "Find revenue trends and top-performing segments"
+python main.py data/samples/sales_data.csv "Find top-performing regions and seasonal trends"
 ```
+
+---
+
+## 5. Dependencies
+
+| Package | Version | Purpose |
+|---|---|---|
+| `anthropic` | ≥0.20.0 | Claude API client |
+| `crewai` | ≥0.28.0 | Agent orchestration framework |
+| `streamlit` | ≥1.32.0 | Web UI |
+| `pandas` | ≥2.0.0 | Data manipulation |
+| `scikit-learn` | ≥1.4.0 | Statistical analysis helpers |
+| `plotly` | ≥5.20.0 | Interactive charts in UI |
+| `pydantic` | ≥2.0.0 | Typed agent output schemas |
+| `python-dotenv` | ≥1.0.0 | Environment variable management |
+
+---
+
+## 6. Team Members & Roles
+
+| Name | Role |
+|---|---|
+| [Your Name] | ML / Agent Architecture |
+| [Teammate] | Frontend / UI (Streamlit) |
+| [Teammate] | Data Science / Analytics |
+
+---
+
+## 7. Live Demo
+
+🌐 **https://swarm-sight.onrender.com** *(replace with live URL before submission)*
+
+The demo is deployed on Render.com free tier. No login required — upload any CSV and the swarm runs live.
+
+**Sample datasets to try** (included in `data/samples/`):
+- `sales_data.csv` — 200-row e-commerce dataset with intentional nulls and duplicates
+- `employee_survey.csv` — 150-row HR survey with mixed data quality
+- `iot_sensors.csv` — 300-row sensor data with anomalous readings
+
+---
+
+## 🌐 Deployment
+
+Deploying to Render.com:
+
+1. Push this repo to GitHub
+2. Go to [render.com](https://render.com) → New Web Service → Connect your GitHub repo
+3. Add `ANTHROPIC_API_KEY` as an environment variable in the Render dashboard
+4. Click **Deploy** — `render.yaml` handles the rest automatically
+
+The app will be live at `https://swarm-sight.onrender.com` (or your chosen service name).
+
+> **Note:** On Render's free tier, the service spins down after 15 minutes of inactivity. The first request after a cold start may take ~30 seconds.
 
 ---
 
@@ -80,8 +181,10 @@ swarm-sight/
 ├── main.py              # Swarm orchestrator — run_swarm() entry point
 ├── requirements.txt
 ├── .env.example
+├── render.yaml          # Render.com deployment config
+├── Procfile
 ├── agents/
-│   ├── base.py          # call_claude() — shared API wrapper
+│   ├── base.py          # call_claude() — core API wrapper
 │   ├── planner.py
 │   ├── cleaner.py
 │   ├── analyst.py
@@ -93,45 +196,11 @@ swarm-sight/
 │   ├── schemas.py       # Pydantic output models
 │   ├── logger.py        # SwarmLogger — live activity feed
 │   └── helpers.py       # CSV utilities
-└── data/
-    └── samples/         # Sample CSVs for testing
+├── data/
+│   └── samples/         # Sample CSVs for testing
+├── docs/                # Architecture doc, pitch deck, submission checklist
+└── tests/               # Unit tests
 ```
-
----
-
-## 🔄 How the Swarm Works
-
-```
-CSV + Goal
-    │
-    ▼
- Planner ──► Cleaner ──► Analyst
-                              │
-                          Validator
-                         ╱         ╲
-                    ✅ Pass      ❌ Retry
-                         ╲         ╱
-                          Reporter
-                              │
-                              ▼
-                      Executive Report
-```
-
-The Validator acts as a quality gate — if outputs don't meet confidence thresholds, it fires targeted retries rather than restarting the whole pipeline.
-
----
-
-## 🧪 Running Tests
-
-```bash
-pytest tests/
-```
-
----
-
-## 🌐 Deployment
-
-The app is configured for **Render.com** (free tier). Once you've pushed to GitHub, connect the repo in Render and set `ANTHROPIC_API_KEY` as an environment variable.
 
 ---
 
@@ -141,4 +210,4 @@ MIT — build on it, hack it, ship it.
 
 ---
 
-<p align="center">Built with ☕ and way too much Claude at a hackathon.</p>
+<p align="center">Built with ☕ and way too much Claude at a hackathon. 🐝</p>

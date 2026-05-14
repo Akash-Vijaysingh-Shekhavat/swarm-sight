@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: swarm-sight
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run ui/app.py --server.port $PORT --server.address 0.0.0.0
+    plan: free
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false   # mark as secret — must be set manually in Render dashboard
+      - key: PYTHON_VERSION
+        value: 3.11.0
